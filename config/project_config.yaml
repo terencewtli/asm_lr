@@ -1,0 +1,80 @@
+projdir: /u/project/cluo/terencew/claude/project_ideas/asm_lr
+scratchdir: /u/project/cluo_scratch/terencew/claude/asm_lr
+resultsdir: /u/project/cluo/terencew/claude/project_ideas/asm_lr/results
+hg38_fasta: /u/project/cluo/terencew/reference/hg38_igvf/GRCh38.autosome.fa
+hg38_chrom_sizes: /u/project/cluo/terencew/reference/hg38_igvf/GRCh38.autosomal.chromsizes
+ctcf_motifs: /u/project/cluo/terencew/reference/homer/data/bed/vertebrates/ctcf.bed.gz
+samples:
+  primary: HG01258   # 1000G sample with Guppy 6.5.7 5mCG ONT data
+  # HG002/HG003/HG004 trio kept for future work; HG01258 used for POC
+  child: HG002
+  father: HG003
+  mother: HG004
+hprc_base_url: https://human-pangenomics.s3.amazonaws.com
+chr_subset: chr19  # proof-of-concept chromosome
+
+# case study loci (from Rosenski 2025 Table S3/S4)
+case_studies:
+  IGF2_enhancer:
+    chrom: chr11
+    start: 2140000
+    end: 2200000
+    note: hepatocyte escape - normally imprinted, biallelic in liver
+  CHD7_iDMR:
+    chrom: chr8
+    start: 61680000
+    end: 61720000
+    note: maternal-methylated iDMR adjacent to CTCF, CHARGE syndrome locus
+  IGF2R_colon:
+    chrom: chr6
+    start: 160380000
+    end: 160500000
+    note: monoallelic to biallelic methylation flip in colon epithelium
+
+# ENCODE ONT data (alternative to HPRC, multiple cell types)
+# search: https://www.encodeproject.org/search/?type=Experiment&assay_title=ONT+long-read+sequencing
+encode_ont_cell_types: [GM12878, K562, HepG2, H1-hESC]
+
+# tool paths
+samtools: /u/local/apps/samtools/1.15/gcc-4.8.5/bin/samtools
+bcftools: /u/local/apps/bcftools/1.11/gcc-4.8.5/bin/bcftools
+
+# conda environments
+conda_allcools: allcools
+conda_whatshap: whatshap-env
+conda_modkit: whatshap-env  # modkit 0.3.2 installed here
+
+# HG01258 unaligned Guppy 6.5.7 5mCG ONT BAMs (public HPRC S3, no sign-in needed)
+# R9.4.1 PromethION, 450bps super-accuracy, 5mC CpG calling enabled (MM/ML tags present)
+# These are unaligned — A00a_align_ont_bam.sh pipes them through minimap2 → chr19 slice
+ont_bam_urls:
+  HG01258:
+    - https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG01258/raw_data/nanopore/guppy_6/HG01258_1_Guppy_6.5.7_450bps_modbases_5mc_cg_sup_prom_pass.bam
+    - https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG01258/raw_data/nanopore/guppy_6/HG01258_3_Guppy_6.5.7_450bps_modbases_5mc_cg_sup_prom_pass.bam
+    - https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG01258/raw_data/nanopore/guppy_6/HG01258_5_Guppy_6.5.7_450bps_modbases_5mc_cg_sup_prom_pass.bam
+  HG01361:
+    - https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG01361/raw_data/nanopore/guppy_6/HG01361_1_Guppy_6.5.7_450bps_modbases_5mc_cg_sup_prom_pass.bam
+
+# 1000 Genomes NYGC phased VCF for het SNP phasing
+# Contains all 3202 samples including HG01258; bcftools view -s HG01258 to extract
+nygc_vcf_base: https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20220422_3202_phased_SNV_INDEL_SV
+nygc_vcf_pattern: 1kGP_high_coverage_Illumina.{chrom}.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+
+# GIAB benchmark VCF for HG002 (kept for future trio work)
+hg002_vcf: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/NISTv4.2.1/GRCh38/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz
+
+# Rosenski 2025 atlas (GEO GSE186458)
+rosenski_geo_accession: GSE186458
+rosenski_n_loci: 324759
+rosenski_n_cell_types: 39
+
+# Analysis parameters
+min_reads_per_locus: 3
+min_cpgs_per_locus: 2
+min_reads_per_haplotype: 5
+methylation_threshold: 0.5        # probability threshold for calling 5mC
+phasing_auc_threshold: 0.7        # AUC threshold for declaring genotype-driven locus
+phasing_pval_threshold: 0.05
+snp_proximal_bp: 200              # short-read limit (one read length)
+snp_distal_bp: 10000              # long-read extension window
+gmm_min_reads: 20                 # minimum reads to fit GMM

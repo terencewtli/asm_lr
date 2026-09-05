@@ -1,0 +1,37 @@
+# Pipeline data outputs (this is a code+docs repo, not a data repo)
+bam/
+modkit/
+pileup/
+vcf/
+assemblies/
+tables/
+data/
+qc/
+figures/
+slides/
+logs/
+tmp/
+
+# Deprecated / historical script snapshots
+old/
+scripts/*/logs/
+scripts/*/old/
+scripts/wg/old/
+scripts/wg/20260903_backup/
+scripts/wg/test/
+
+# Snakemake cache (unused — pipeline is orchestrated via qsub, not Snakemake)
+.snakemake/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local-only notebook variants and large local tables
+**/*.local.ipynb
+tables/local/
+
+# Common data file extensions if they ever land at repo root
+*.h5ad
+*.bam
+*.bai
+*.parquet

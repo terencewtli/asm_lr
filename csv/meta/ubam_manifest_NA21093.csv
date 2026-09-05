@@ -1,0 +1,5 @@
+task_id,sample,ubam_path
+1,NA21093,/u/project/cluo/terencew/claude/project_ideas/asm_lr/bam/ubam/NA21093/01_23_24_R1041_HPRC_NA21093_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam
+2,NA21093,/u/project/cluo/terencew/claude/project_ideas/asm_lr/bam/ubam/NA21093/12_12_23_R1041_HPRC_NA21093_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam
+3,NA21093,/u/project/cluo/terencew/claude/project_ideas/asm_lr/bam/ubam/NA21093/12_12_23_R1041_HPRC_NA21093_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam
+4,NA21093,/u/project/cluo/terencew/claude/project_ideas/asm_lr/bam/ubam/NA21093/12_12_23_R1041_HPRC_NA21093_3_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam
