@@ -19,8 +19,7 @@ The central question: **to what extent does single-molecule methylation
 structure arise from genetic variation?** This reframes ASM as a special case
 of a broader phenomenon — methylation pattern structure on individual DNA
 molecules — rather than a haplotype-difference summary statistic. See
-[`md/proposal.md`](md/proposal.md) and [`md/updated_proposal.md`](md/updated_proposal.md)
-for the full scientific framing.
+[`md/updated_proposal.md`](md/updated_proposal.md) for the full scientific framing.
 
 Short reads can only detect SNP-CpG associations within ~200 bp (one read).
 Long reads span 5–20 kb, phasing methylation over distances invisible to
@@ -76,8 +75,10 @@ was tried and abandoned; the pipeline is qsub-only now.)
 `scripts/download/` (`D01`–`D04`) fetches HPRC ONT uBAMs, 1000G phased VCFs,
 and HPRC assemblies (the latter needed for `dipcall` assembly-backed
 phasing, see caveat below). `scripts/genozip/` compresses/decompresses BAMs
-for archival. `scripts/NA21093/` is the per-sample script set from an earlier
-single-donor development pass, kept for reference.
+for archival. `scripts/NA21093/` keeps only `W12_epiallele_entropy.{sh,py}` —
+the epiallele-complexity analysis behind [`md/epiallele.results.md`](md/epiallele.results.md),
+for which no equivalent exists yet in `scripts/wg/`; the rest of that earlier
+single-donor development pass was dropped as superseded by `scripts/wg/`.
 
 Chr19-scope proof-of-concept results for the original HG01258 pilot sample
 (SHAPEIT4-phased, Guppy/R9.4.1 — now in the excluded batch) are documented in
@@ -109,8 +110,13 @@ epiallele-complexity analysis). That pipeline design carries forward to the
 
 ## Other documentation
 
-See [`md/`](md/) for additional methodology and review notes:
-`progress.md` (dated status log), `20260612.assessment.md`,
-`critique.md` / `20260902.critique.md` (methods critiques),
-`pipeline.annot.md` / `pipeline.comments.md` (pipeline design notes),
-`epiallele.results.md` (chr19 epiallele-complexity results).
+`md/` is kept intentionally lean — methodology and results documentation only, no
+working notes or chat-style critique threads:
+
+- [`progress.md`](md/progress.md) — dated status log of pipeline results
+- [`epiallele.results.md`](md/epiallele.results.md) — chr19 epiallele-complexity results (HG01258 pilot)
+- [`pipeline.md`](md/pipeline.md) — full pipeline architecture and POC results
+- [`basecaller_cohort_split.md`](md/basecaller_cohort_split.md) — why the cohort is 18, not 30
+- [`20260904_cohort_provenance.md`](md/20260904_cohort_provenance.md) — cohort selection methodology
+- [`20260903_qc_review.md`](md/20260903_qc_review.md) — QC findings and phasing-validity review
+- [`updated_proposal.md`](md/updated_proposal.md) — scientific framing and motivation
