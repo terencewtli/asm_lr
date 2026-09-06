@@ -101,12 +101,15 @@ epiallele-complexity analysis). That pipeline design carries forward to the
   old pilot's ~18%, but still under the ≥60% QC gate this project targets.
   Worth checking systematically before trusting phased/haplotype-stratified
   results.
-- **Fisher-based dASM calling (W04) has never been run at scale.** A small
-  timing pilot (a handful of tasks, not the full 396-task array) was just
-  submitted, since its resource requests (`h_data`/`h_rt`) were unvalidated
-  placeholders and the one earlier pilot attempt died during the upstream
-  modkit pileup step before ever reaching the Fisher call. Full-scale timing
-  and submission are still pending.
+- **Fisher-based dASM calling (W04) is not ready to run at scale.** A BED4-vs-BED6
+  bug blocking `modkit extract` was found and fixed, and a chr1 pilot across all
+  18 donors surfaced a serious methodological problem: candidate ASM rate varies
+  by >50,000x across samples in a pattern that tracks neither ancestry nor
+  sequencing depth cleanly, driven by a mix of a real depth/power confound in
+  the per-CpG Fisher test and a handful of individually anomalous samples whose
+  root cause hasn't been identified despite extensive QC. **Do not run the full
+  396-task array or report an ASM rate by population from this pipeline until
+  this is resolved.** Full writeup: [`md/20260905.progress.md`](md/20260905.progress.md).
 
 ## Other documentation
 
@@ -114,6 +117,7 @@ epiallele-complexity analysis). That pipeline design carries forward to the
 working notes or chat-style critique threads:
 
 - [`progress.md`](md/progress.md) — dated status log of pipeline results
+- [`20260905.progress.md`](md/20260905.progress.md) — ASM (W04) first-pass results, extensive QC, and the depth/sample-quality confound blocking any cross-sample comparison
 - [`epiallele.results.md`](md/epiallele.results.md) — chr19 epiallele-complexity results (HG01258 pilot)
 - [`pipeline.md`](md/pipeline.md) — full pipeline architecture and POC results
 - [`basecaller_cohort_split.md`](md/basecaller_cohort_split.md) — why the cohort is 18, not 30
