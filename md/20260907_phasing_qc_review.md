@@ -364,3 +364,105 @@ TE-methylation study using HiFi+WGBS+ONT and HiPhase (HiFi) phasing — not an A
 no mention of switch error/dispersion/per-sample ASM heterogeneity. Not a useful comparison for
 this project's donor-anomaly question. Gustafson et al. 2024 (1KGP-ONT) remains the closer
 analog if this needs checking against another group's experience.
+
+---
+
+## 10. Proximal/distal breakdown was wrong — found and fixed a real bug, not just staleness
+
+The 91.9% proximal / 7.4% distal / 0.7% very_distal breakdown reported earlier today (and in
+`md/20260907.results.summary.md`) is **wrong**, not just built on stale donor coverage (§ above
+already fixed that separately). Directly comparing the original `six_donor_sig_regions.tsv`
+against a from-scratch recompute of `nearest_snp_dist` (same method: nearest het-SNP position
+per `vcf/read_based/{sample}_{chrom}_het_snps.vcf.gz`, same 200bp/5kb thresholds) found:
+**HG00146 chr1 matches exactly between old and new (249/249 rows, identical distances)**, but
+every *other* chromosome's category values in the original aggregate are wrong — HG00146's
+genome-wide old value was 98.1% proximal, but the corrected per-chromosome values (all 6 donors,
+all 22 chroms) range smoothly 22-64% proximal with no chromosome anywhere near 98%. The original
+per-chromosome parallel computation (`ProcessPoolExecutor`, one job per (sample, chrom)) has a
+real bug for the non-chr1 jobs; not root-caused, but the recompute is verified correct against
+chr1 as ground truth and produces a smooth, sane per-chromosome pattern everywhere.
+
+**Corrected numbers** (`tables/asm_analysis/six_donor_sig_regions_COMPLETE.tsv`,
+`tables/asm_analysis/finalized_asm_loci.tsv`):
+
+| | proximal (≤200bp) | distal (200bp-5kb) | very distal (>5kb) |
+|---|---|---|---|
+| Per-donor, unreplicated (41,461 sig. regions) | 44.3% | 48.9% | 6.9% |
+| Finalized, ≥2-of-6-donor replicated (4,466 loci) | 55.6% | 41.0% | 3.4% |
+
+Two things follow from this:
+
+1. **The corrected unreplicated split (44%/49%/7%) is close to phase-1's own single-donor number
+   (33.4% proximal / 66.6% long-read-only, `md/progress.md`)** — much more consistent with the
+   "why long-read" thesis than the wrong 91.9% figure suggested, and consistent with the
+   intuition that 30-40kb reads should reach plenty of CpGs far from the nearest phaseable SNP.
+2. **Requiring ≥2-donor replication measurably shifts the mix toward proximal** (44%→56%
+   proximal, 7%→3% very-distal — very-distal roughly halves). Read as a statistical-power
+   effect, not a biological one: a locus anchored by a *nearby* het SNP has a shorter, more
+   direct single-molecule linkage to the tested CpG (fewer opportunities for something to go
+   wrong over the intervening span), so it's more likely to independently clear significance in
+   multiple donors with different het-SNP sets and coverage. Distal/very-distal loci — the class
+   that's actually novel to long reads — are disproportionately filtered out by a
+   replication-based inclusion criterion.
+
+**Implication for the paper's evidence chain**: don't use the ≥2-donor-replicated set as the
+basis for the "long reads reveal otherwise-invisible ASM" claim — that claim should rest on
+phase-1's already-validated single-donor ascertainment analysis (which isn't subject to this
+replication-power bias). The replicated set is a different, narrower, complementary claim
+("these specific loci reproduce across individuals") and should be presented as such, with the
+proximal-skew called out explicitly rather than left implicit.
+
+`md/20260907.results.summary.md` and `doc/20260907.results.docx` still have the old, wrong
+91.9% figure and need regenerating with the corrected numbers/figures.
+
+## 11. Paper scope decision (discussed at length, not just QC)
+
+Project owner's call, after discussion: **one paper, not two, in a ~2 month timeline.**
+Biology-primary framing ("what do we gain from long-read vs. short-read ASM detection"), with
+the donor-heterogeneity/caller-calibration work included as supporting validation content
+("methods baked into main figures"), not as a second, methods-led paper. Explicitly ruled out
+of scope for this paper: chrX/XCI, CPEL evaluation, fully root-causing the two zero-hit donors,
+population/ancestry-stratified biology claims (n=6, at most n=18, is underpowered for this —
+already directly tested: the one same-ancestry pair among the six replicates at a rate
+indistinguishable from cross-ancestry pairs).
+
+**What "baked-in methods" needs to be credible, scoped down from a full methods paper**:
+(1) a principled, transparent donor-exclusion criterion (the permutation-null test, already
+built and run on 6 donors) rather than fully explaining *why* specific donors fail it;
+(2) the read-level confirmatory pass (`P06_readlevel_confirm.py`) run genome-wide on the
+retained donors (currently only HG00146 chr1: 248/249, 99.6%, confirmed but not yet a strong
+test — see below); (3) the positive controls already in hand (imprinting recovery, meQTL
+enrichment, effect-size concordance across donors, §12).
+
+**Decided: switch phasing from statistical (1000G panel) to assembly-backed
+(dipcall + `whatshap phase`) as the production standard**, not just a QC side-comparison — the
+project owner's reasoning (agreed): the panel VCF is structurally worse than using the HPRC
+assemblies directly, given they're already downloaded, and it's not a large compute lift.
+Re-submitted genome-wide (not chr1-only pilot): `P01_run_dipcall_pilot.sh` (job 14697667,
+already genome-wide by construction — dipcall aligns the whole assembly) →
+`P02_phase_readbased_dipcall_vcf.sh` (job 14697668, widened from chr1-only to all 22
+chromosomes, 132 tasks = 6 donors x 22 chroms, held on the dipcall job). The prior chr1-only
+P01/P02 submission (jobs 14697093/14697095) never actually ran — no logs, no output — likely
+lost to queue turnover; this is a fresh resubmission, not a continuation.
+
+**Next step once P02 clears**: re-haplotag the 6 sane donors against the dipcall-phased VCF
+(replacing the 1000G panel VCF), then re-run W02/W03/beta-binomial calling downstream for those
+donors — this is a real pipeline re-execution, not just a QC comparison, since the decision is
+to make this the new production source.
+
+## 12. Big next steps, in priority order (superseding the punch list in `md/20260907_outstanding_items.md` for anything paper-scoped)
+
+1. Regenerate `md/20260907.results.summary.md` / `doc/20260907.results.docx` with the corrected
+   proximal/distal numbers (§10) and the replication-bias caveat.
+2. Scale `P06_readlevel_confirm.py` to run genome-wide across all 6 sane donors — the real test
+   of "do the retained calls hold up," and (separately, lower priority) run it once on a flagged
+   donor's candidates as the actual test of the pseudoreplication hypothesis.
+3. Let P01/P02 (dipcall + genome-wide whatshap phase) finish, then re-haplotag and re-call the
+   6 sane donors against the new phased VCF — this becomes the production locus set the paper
+   is built on, superseding the panel-phased results throughout.
+4. Once (3) lands, redo the finalized-locus-list build, the four discovery checks, and the
+   effect-size-consistency notebook against the dipcall-phased calls — the current versions of
+   all of these are built on panel-phased data that's about to be superseded.
+5. Nail down a defensible, transparent per-donor QC/exclusion criterion (permutation-null-based)
+   as the paper's stated basis for which donors are included, rather than presenting an
+   unresolved anomaly.
