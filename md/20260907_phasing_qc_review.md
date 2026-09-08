@@ -466,3 +466,149 @@ to make this the new production source.
 5. Nail down a defensible, transparent per-donor QC/exclusion criterion (permutation-null-based)
    as the paper's stated basis for which donors are included, rather than presenting an
    unresolved anomaly.
+
+---
+
+## 13. Session close-out (end of day) — results, decisions, and priorities for whoever picks this up next
+
+**Read this section first if resuming.** Today ran long and touched a lot of moving parts across
+this file (§1-13); this section is the synthesis. Also relevant, same date: `md/20260907.results.summary.md`
+(has stale numbers, not yet regenerated — see §10), `md/20260907_outstanding_items.md` (written mid-day,
+partly superseded by the scope decision in §11 below), and `github/ont_asm_caller/docs/2026-09-07_next_steps_for_discovery_handoff.md`
+(the methods-arm handoff, in the *other* repo).
+
+### New results that shape the paper's main flavor
+
+1. **Per-donor proximal/distal split is ~50/50, not 90/10.** Two real bugs were found and fixed
+   today (§10): a stale intermediate aggregate missing most of NA18959's chromosomes, and a
+   genuine computational bug in the original per-chromosome nearest-het-SNP-distance calculation
+   (verified: chr1 matches a from-scratch recompute exactly; every other chromosome's original
+   values don't). Corrected, per-donor, no replication requirement, no reliance on phase-1
+   (deliberately dropped as an evidentiary basis — different basecaller/chemistry than the main
+   cohort, and predates this project's whole calling-methodology evolution):
+
+   | Donor | proximal | distal | very distal |
+   |---|---|---|---|
+   | HG00146 | 35.2% | 55.5% | 9.3% |
+   | HG02392 | 46.9% | 46.6% | 6.5% |
+   | NA18959 | 46.4% | 45.8% | 7.8% |
+   | NA19682 | 48.7% | 46.5% | 4.7% |
+   | NA19700 | 56.0% | 41.6% | 2.3% |
+   | NA21110 | 51.2% | 43.2% | 5.6% |
+
+   Consistent across all 6 donors independently — not driven by one outlier. **This is now the
+   paper's core "you get a lot more loci with long reads" number**: roughly half of each donor's
+   own significant ASM calls sit beyond where short-read phasing can reach (proximal ≤200bp is
+   phase-1's own short-read-detectable-proxy definition, so this is directly comparable in kind,
+   just measured fresh on the modern cohort/pipeline instead of reused from phase-1).
+
+2. **Imprinting recovery, stratified by cross-donor replication count, is a clean monotonic
+   dose-response** — the single best new result of the day:
+
+   | n donors supporting locus | n loci | % that are known imprinted DMRs |
+   |---|---|---|
+   | 1 | 25,425 | 0.10% |
+   | 2 | 3,052 | 0.33% |
+   | 3 | 859 | 1.40% |
+   | 4 | 339 | 5.60% |
+   | 5 | 154 | 18.83% |
+   | 6 (all donors) | 62 | **53.23%** |
+
+   Loci replicating in all 6 donors are majority known imprinted DMRs; donor-private loci are
+   essentially never imprinted (0.10%). This validates the replication-count axis as tracking
+   real biology (imprinting is the one truly population-universal ASM mechanism, and it
+   dominates exactly the tier where universal replication would predict it should) — a strong,
+   clean, headline-figure-worthy result.
+
+3. **The heavy single-donor concentration (85% of merged loci, 25,425/29,891) is mostly NOT an
+   ascertainment artifact.** Sampled 500 singleton loci and checked whether the other 5 donors
+   even had a *testable* (adequately-covered, regardless of significance) region there:
+   **90.8% were testable in all 5 other donors — they just weren't called significant.** Only
+   0.2% were genuinely untestable elsewhere. This redirects the explanation toward genuine
+   allele-frequency-limited, genotype-driven ASM (a real causal variant needs to be present, not
+   just a nearby het SNP) rather than "other donors never had the opportunity to detect it" —
+   consistent with, not contradictory to, real biology, though some residual technical noise
+   contribution can't be fully excluded.
+
+4. **Effect-size concordance across donors at shared loci** (§ from earlier today,
+   `notebooks/asm_analysis/ASM02_effect_size_consistency.ipynb`): 79.6% of |Δ| variance is
+   between-locus (locus identity), not between-donor; pairwise concordance r=0.724 (n=10,133
+   donor-pairs). Detected *loci* differ donor-to-donor (consistent with #3 above — different
+   donors carry different het SNPs/causal variants), but effect *size* at a shared locus is
+   consistent.
+
+**Excitement flagged by the project owner**: the ~50/50 proximal/distal split is a bigger,
+more compelling gain than the earlier (wrong) 90/10 split suggested, and opens a genuine new
+direction — **investigating specific distal loci for mechanism** (chromatin context, gene
+proximity, what's actually going on biologically at the long-read-only class) is now an
+explicit next priority, not just a QC-validated count. Not yet scoped or started.
+
+### Decisions made today about the paper itself
+
+- **One paper, ~2 months, biology-primary** ("what do we gain from long-read vs. short-read ASM
+  detection"), not two papers and not methods-led. Donor-heterogeneity/caller-calibration work
+  is supporting validation content, scoped down to: a transparent donor-exclusion criterion +
+  the read-level confirmatory pass + the existing positive controls (§11, unchanged).
+- **Explicitly out of scope for this paper**: chrX/XCI, CPEL evaluation, fully root-causing the
+  two zero-hit donors (HG00344, NA21144), and any population/ancestry-stratified biology claim
+  (n=6, or even n=18, is underpowered — directly tested: the one same-ancestry pair among the
+  six replicates indistinguishably from cross-ancestry pairs).
+- **Phase-1 (HG01258) dropped as the evidentiary basis** for the long-read-gain claim — wrong
+  basecaller/chemistry relative to the main cohort, methodologically superseded. Use the fresh
+  per-donor breakdown above instead.
+- **Production phasing is switching from statistical (1000G panel) to assembly-backed
+  (dipcall + `whatshap phase`)** — not just a QC side-comparison anymore, the project owner's
+  call given the assemblies are already available and it's not a large compute lift. **Still
+  running as of session close**: `P01_run_dipcall_pilot.sh` (job 14697667, genome-wide, still
+  `qw`) → `P02_phase_readbased_dipcall_vcf.sh` (job 14697668, 132 tasks = 6 donors × 22 chroms,
+  held, not started). Once this clears: re-haplotag the 6 sane donors against the new phased
+  VCF, then re-run W02/W03/beta-binomial calling downstream — **every locus-list/discovery
+  number in this file and in `md/20260907.results.summary.md` is about to be superseded by
+  that re-call**, not final.
+
+### Open discussion points / priorities, not yet resolved
+
+Roughly in priority order for whoever picks this up:
+
+1. **Regenerate everything once the dipcall re-call (above) lands** — finalized locus list,
+   the four discovery checks, the effect-size-consistency notebook, and the corrected
+   proximal/distal table are all currently built on soon-to-be-superseded panel-phased data.
+2. **Investigate specific distal loci for mechanism** (new, per the project owner's excitement
+   above) — not scoped yet. Natural next questions: what genes/regulatory elements do they sit
+   in, is there a chromatin-state or repeat-content story (phase-1's W10 already found distal
+   and proximal loci functionally indistinguishable on that axis for HG01258 — worth checking
+   whether that holds on the modern multi-donor set too), any enrichment pattern.
+3. **Sensitivity check on the 250bp merge slop** (0bp / 250bp / 500bp) — flagged twice today,
+   still not run. Priority raised given how much is now resting on the replication-count
+   figures (imprinting stratification, effect-size concordance).
+4. **Scale `P06_readlevel_confirm.py` genome-wide** across the 6 sane donors (currently only
+   HG00146 chr1: 248/249 confirmed, not yet a strong test — the real test is running it on a
+   flagged donor's candidates, still not done either).
+5. **"Testable but not significant" trend-direction check** (proposed today, not run): for
+   singleton loci, do the other testable-but-non-significant donors at least trend the same
+   direction, even without reaching significance? Would further distinguish "real but
+   underpowered elsewhere" from "genuinely private" for the singleton-locus question.
+6. Literature check: is the heavy single-donor/"erratic ASM" pattern already reported elsewhere
+   (the Gutiérrez-Arcelus-style genotype-vs-donor-specific ASM/ASE literature)? Not searched.
+7. A defensible, transparent per-donor QC/exclusion criterion (permutation-null-based) still
+   needs to be finalized as the paper's stated basis for donor inclusion.
+
+### For a future Claude Code session picking this up
+
+- **Read order**: this section first, then skim §1-12 of this same file for the day's full
+  narrative, then `md/20260907_outstanding_items.md` for anything not superseded by the scope
+  decision above, then `github/ont_asm_caller/docs/2026-09-07_next_steps_for_discovery_handoff.md`
+  if picking up methods-arm work specifically (separate repo, separate session by design — see
+  `CLAUDE.md`'s git-fetch guardrail, added today for exactly this multi-session situation).
+- **Check job status first**: `qstat -u terencew` for jobs 14697667/14697668 (dipcall + genome-
+  wide read-based phasing) — if they've cleared, item 1 above (the full re-call) is the
+  immediate next action, and it will invalidate the specific numbers in §10-13 of this file
+  until redone.
+- **Today's numbers came with two real, silently-wrong bugs** (§10) caught only by directly
+  spot-checking a from-scratch recompute against a known-good slice (chr1) rather than trusting
+  an existing aggregate. Worth the same discipline going forward — any inherited intermediate
+  table (not freshly regenerated from `tables/dasm_betabinom/*/regions_chr*.tsv`) should be
+  treated as suspect until spot-checked, not assumed current.
+- `doc/20260907.results.docx` and `md/20260907.results.summary.md` still have the wrong 91.9%
+  proximal figure — do not cite them as-is; regenerate after the dipcall re-call, not before
+  (regenerating twice would be wasted effort).
