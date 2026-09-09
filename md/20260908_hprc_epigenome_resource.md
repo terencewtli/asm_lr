@@ -249,3 +249,159 @@ a discussion section.
 **Reproducibility note.** All numbers in this document were derived from the public bucket and
 the public 1KGP pedigree; the derivation is a bucket listing plus an ID intersect and is
 reproducible in a few minutes with `curl` alone.
+
+---
+
+## 9. Addendum: access policy, what HPRC has actually done, and how little you need to download
+
+Added the same day, after the questions "am I scooping a consortium?" and "do I need all the
+BAMs?".
+
+### 9.1 The data-use policy explicitly permits this
+
+From the [HPRC Data Use and Publication Protocol](https://humanpangenome.org/publication_protocol/)
+and [Data Use](https://humanpangenome.org/data-use/) pages:
+
+- HPRC data "are in the public domain," not patented or copyrighted, and donors "have given broad
+  informed consent for re-use."
+- "Publicly released" = data that is either published, **or** part of an unpublished data freeze
+  more than one year old.
+- **"Researchers are encouraged to publish publicly released data without contacting the HPRC
+  directly."**
+- The notify-first requirement applies only to genome-wide publication on data that is *not yet*
+  publicly released; in that case HPRC asks for consortium-banner authorship after steering
+  committee review.
+- Users must cite the latest integrated HPRC publication and the accessions used, and remain
+  bound by any sample-specific restrictions in the HPRC data use table.
+
+Release 2 assemblies are public, the epigenome resource is published on AWS Open Data with a
+prescribed citation format, and the HPRC2 preprint (July 2026) exists as the integrated
+publication to cite. This is not scooping; it is the intended use.
+
+**Recommended anyway: email the resource contact (`dli23@wustl.edu`, Ting Wang lab) before
+committing months of compute.** This is the dominant strategy regardless of the answer. Either
+they say they are not pursuing ASM — which removes the largest risk in this project at the cost
+of one email — or they are, and the conversation becomes a collaboration instead of a race lost
+silently. The downside is negligible because the policy already grants permission.
+
+### 9.2 What HPRC has and has not done
+
+Searched again specifically for consortium ASM/meQTL work. Findings:
+
+- **No HPRC ASM or meQTL paper exists.** The HPRC-adjacent methylation work remains Zhuo et al.
+  2026 (*Genome Res*), scoped to polymorphic transposable-element insertions.
+- **The Fiber-seq worry is partly misplaced.** Enumerating all 11,355 objects in the bucket, the
+  per-sample assay files are: ONT methylation, PacBio methylation, per-haplotype expression,
+  Hi-C, CGI, RepeatMasker, HMMFlagger, gene annotation, and assembly-to-reference alignments.
+  **No Fiber-seq / FIRE / ATAC files are present.** The AWS registry's "chromatin accessibility"
+  phrasing appears to refer to the Hi-C tracks and to the browser's broader scope.
+- **Fiber-seq haplotype work exists but elsewhere.** "A haplotype-resolved view of human gene
+  regulation" (Stergachis lab, bioRxiv 2024) maps haplotype-selective chromatin accessibility
+  (1,231 genome-wide-significant elements) using FIRE — on GM12878, COLO829, fibroblast lines,
+  CD8+ T cells and primary tissue, **not HPRC samples**, and it explicitly does **not** perform
+  ASM or meQTL discovery even though it measures CpG methylation alongside.
+
+That last point is worth reading twice. The nearest thing to this project's design that has been
+published is single-modality (accessibility only), on a handful of cell lines, and it left
+methylation on the table.
+
+### 9.3 A methylation-only paper does not look thin — a shallow one does
+
+The instinct that "if I only do methylation it'll look weird next to their Hi-C and RNA" conflates
+two different paper shapes. Multi-omic integration across every available assay is a *consortium
+resource* paper. A single-modality paper carried by methodological depth is a different and
+equally standard shape — and it is what the comparison set actually looks like: the FIRE paper is
+accessibility-only, Rosenski is methylation-only, nanoASM is methylation-only.
+
+The correct response to a data-rich neighbourhood is not to add modalities until the scope becomes
+unmanageable. It is to go deeper on one. Adding **ASE as a single validation chapter** is cheap
+(202 samples, bigwigs, no new pipeline) and buys most of the integrative credit; Hi-C is a third
+chapter only if the distal-ASM result actually needs it.
+
+### 9.4 You do not need the BAMs
+
+**Verified working, remotely, with no bulk download.** Every methylation and alignment file in the
+bucket is tabix-indexed and readable over HTTPS by `tabix` directly:
+
+```
+B=https://hprc-epigenome.s3.us-east-2.amazonaws.com/samples/HG00146
+
+# step 1 — project an hg38 region to this sample's assembly coordinates
+tabix $B/hap1_vs_hg38.gz chr7:130490000-130500000
+#   -> chr7 129808123 130591387 id:33866,genomealign:{chr:"HG00146#1#CM090016.1",
+#      start:130815525,stop:131598785,strand:"+",targetseq:"..."}
+
+# step 2 — pull read-level methylation there
+tabix $B/methylation.ONT.hap1.modbed.gz "HG00146#1#CM090016.1:131490000-131500000"
+#   -> 30 reads, 1.3 seconds
+```
+
+What this means for scope:
+
+| Need | Source | BAM required? |
+|---|---|---|
+| Per-read CpG patterns (epialleles, entropy, co-methylation) | `methylation.ONT.hap*.modbed.gz` — read UUIDs + per-CpG offsets | **No** |
+| Per-CpG per-haplotype counts for the beta-binomial caller | derive by aggregating the same modbed | **No** |
+| Haplotype assignment of reads | already done, assembly-based | **No** |
+| Design-effect / pseudoreplication measurement | read-level modbed | **No** |
+| Het sites and which haplotype carries which allele | dipcall on the two assemblies (`D03`/`D04` already written), or 1KGP panel + projection | No — assemblies, not BAMs |
+| Coordinate projection to hg38 | `hap*_vs_{hg38,chm13}.gz`, tabix-indexed | **No** |
+| Assembly-reliability masking | `HMMFlagger.{ONT,PacBio}.bed.gz` | **No** |
+
+Storage: full download of read-level ONT methylation is ~1.2 TB (2.6 GB × 2 × 229), versus roughly
+11–22 TB for the equivalent BAMs. With region-restricted remote queries it is closer to **zero** —
+stream per sample, compute, discard.
+
+**Two things you genuinely give up by not using BAMs**, and both should be stated as limitations
+rather than discovered later:
+
+1. **Per-call modification probabilities are gone.** The modbed encodes modified and unmodified
+   CpG positions as offset lists — already binarized at somebody else's threshold. There is no ML
+   tag to filter on and no way to propagate call uncertainty into the beta-binomial likelihood.
+   For a project whose contribution is statistical calibration, that is a real constraint. It may
+   justify keeping BAMs for the read-level Tier 2 subset only.
+2. **No re-alignment or re-basecalling.** The haplotype assignment, the basecaller, and the
+   modification model are fixed to HPRC's choices. This is mostly a benefit (standardization
+   across 229 donors is exactly the thing the current 18-donor cohort lacks), but it removes the
+   R10.4.1/Dorado-vs-R9.4.1 control this project currently exercises deliberately.
+
+**Also note what assembly-based haplotype assignment fixes for free:** the ~38% WhatsHap
+haplotagging rate, which is currently one of the top three blockers, is not a problem in this data
+— reads were assigned to haplotypes by mapping to the diploid assembly, not by spanning a
+phased het SNP. That removes an entire open item.
+
+### 9.5 Unexpected observation: these are ultra-long reads
+
+In the MEST-region query above, the 6 reads inspected had alignment spans of **130–278 kb**, one
+carrying 2,111 methylated and 711 unmethylated CpG calls on a single molecule. HPRC ONT is
+explicitly the "Ultralong" product (>100 kb), which is consistent.
+
+Two consequences, both flagged as *observed on 6 reads in one window of one sample — compute the
+cohort-wide read-length distribution before relying on this*:
+
+- `README.md` currently states "Long reads span 5–20 kb." If the cohort-wide distribution matches
+  what was observed, that line understates the data by an order of magnitude and should be fixed.
+- The proximal/distal/very-distal taxonomy is capped at 50 kb, which was calibrated to 5–20 kb
+  reads. Molecules spanning 130–278 kb make SNP–CpG linkage observable at distances the current
+  classification cannot express, and they differentiate this data from both 1KGP-ONT (N50 54 kb)
+  and deCODE (N50 19 kb) on the one axis this project's core claim depends on.
+
+### 9.6 A tiered scope that keeps the project manageable
+
+The worry that n=221 makes the project unmanageable is legitimate, but n=221 does not have to mean
+221 donors through every analysis. Availability of a cohort does not obligate its use — but with
+the data this easy to query, "why only 30?" now needs an answer, and a tiered design is that
+answer:
+
+| Tier | n | Analyses | Cost |
+|---|---|---|---|
+| 1 | ~221 (all) | Aggregate per-CpG per-haplotype ASM; proximal/distal architecture; ancestry stratification; allele-frequency and LD tests | Streaming remote queries; no BAMs; modest |
+| 2 | ~40–60, balanced across the 5 superpopulations | Read-level epiallele structure, co-methylation, entropy, design-effect calibration, per-locus confirmation | Read-level; the expensive tier; possibly with BAMs for call probabilities |
+| 3 | ~202 (ASE available) | ASM × allele-specific expression concordance | Cheap — bigwigs, no new pipeline |
+
+This is defensible as written: the expensive analysis runs where depth is needed, the cheap
+analysis runs everywhere, and no reviewer asks why the cohort was truncated.
+
+**The sequencing constraint from §7 still holds.** None of this starts before the three-way
+proximal/distal inconsistency is resolved and the zero-hit-donor failure mode is root-caused —
+those are caller problems, and they get 12× worse at scale, not better.
