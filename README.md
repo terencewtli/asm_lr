@@ -125,3 +125,4 @@ working notes or chat-style critique threads:
 - [`20260903_qc_review.md`](md/20260903_qc_review.md) — QC findings and phasing-validity review
 - [`updated_proposal.md`](md/updated_proposal.md) — scientific framing and motivation
 - [`20260908_lit_review.md`](md/20260908_lit_review.md) — literature landscape for long-read ASM, scooping-risk assessment, and claim-by-claim novelty adjudication
+- [`20260908_hprc_epigenome_resource.md`](md/20260908_hprc_epigenome_resource.md) — the HPRC Epigenome resource (232 samples, read-level ONT methylation per haplotype); **n=221 have matched 1KGP phased genotypes**, which removes the n=18 cohort constraint. Candidate sample list: `txt/samples/hprc_epigenome_n221_candidates.txt`
