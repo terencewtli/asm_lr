@@ -124,3 +124,4 @@ working notes or chat-style critique threads:
 - [`20260904_cohort_provenance.md`](md/20260904_cohort_provenance.md) — cohort selection methodology
 - [`20260903_qc_review.md`](md/20260903_qc_review.md) — QC findings and phasing-validity review
 - [`updated_proposal.md`](md/updated_proposal.md) — scientific framing and motivation
+- [`20260908_lit_review.md`](md/20260908_lit_review.md) — literature landscape for long-read ASM, scooping-risk assessment, and claim-by-claim novelty adjudication
